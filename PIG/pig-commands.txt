@@ -1,0 +1,230 @@
+[edureka@localhost PIG]$ pwd
+/home/edureka/SHAHBAZWS/BATCH170917/PIG
+[edureka@localhost PIG]$ pig -x local    // run in local mode
+grunt> fs
+2018-03-25 10:52:38,480 [main] ERROR org.apache.pig.tools.grunt.Grunt - ERROR 1000: Error during parsing. Encountered " <EOL> "\n "" at line 1, column 3.
+Was expecting one of:
+    "cat" ...
+    "clear" ...
+    "cd" ...
+    "cp" ...
+    "copyFromLocal" ...
+    "copyToLocal" ...
+    "dump" ...
+    "\\d" ...
+    "describe" ...
+    "\\de" ...
+    "aliases" ...
+    "explain" ...
+    "\\e" ...
+    "help" ...
+    "history" ...
+    "kill" ...
+    "ls" ...
+    "mv" ...
+    "mkdir" ...
+    "pwd" ...
+    "quit" ...
+    "\\q" ...
+    "register" ...
+    "using" ...
+    "as" ...
+    "rm" ...
+    "set" ...
+    "illustrate" ...
+    "\\i" ...
+    "run" ...
+    "exec" ...
+    "scriptDone" ...
+    <IDENTIFIER> ...
+    <PATH> ...
+    
+Details at logfile: /home/edureka/SHAHBAZWS/BATCH170917/PIG/pig_1521954961990.log
+grunt> ls
+file:/home/edureka/SHAHBAZWS/BATCH170917/PIG/pig_1521954961990.log<r 1>	12405
+grunt> fs -ls /home/edureka/
+Found 56 items
+grunt> fs -ls hdfs://localhost:8020/user/edureka/
+Found 2 items
+-rw-r--r--   1 edureka supergroup         46 2017-10-14 16:15 hdfs://localhost:8020/user/edureka/WordCount.txt
+-rwxrwxrwx   1 edureka supergroup     391355 2014-09-30 12:29 hdfs://localhost:8020/user/edureka/custs
+
+grunt> lines = LOAD '/home/edureka/WordCount.txt' USING TextLoader AS (line:chararray);
+grunt> words = FOREACH lines GENERATE FLATTEN(TOKENIZE(line)) as word;
+grunt> grouped = GROUP words BY word;
+grunt> wordcount = FOREACH grouped GENERATE group, COUNT(words);
+grunt> STORE wordcount INTO '/home/edureka/SHAHBAZWS/BATCH170917/PIG/WordCount/';
+
+
+------from other terminal
+[edureka@localhost ~]$ cd SHAHBAZWS/BATCH170917/PIG/
+[edureka@localhost PIG]$ pwd
+/home/edureka/SHAHBAZWS/BATCH170917/PIG
+[edureka@localhost PIG]$ ls -lrt
+total 24
+-rw-rw-r--. 1 edureka edureka 18393 Mar 25 11:20 pig_1521954961990.log
+drwxrwxr-x. 2 edureka edureka  4096 Mar 25 11:24 WordCount
+[edureka@localhost PIG]$ cd WordCount/
+[edureka@localhost WordCount]$ ls -lrt
+total 4
+-rw-r--r--. 1 edureka edureka 68 Mar 25 11:24 part-r-00000
+-rw-r--r--. 1 edureka edureka  0 Mar 25 11:24 _SUCCESS
+[edureka@localhost WordCount]$ cat part-r-00000
+I	1
+in	1
+is	1
+ma	1
+my	1
+This	1
+file	1
+hdfs	1
+lean	1
+first	1
+hurry	1
+[edureka@localhost WordCount]$ 
+
+--------------------------
+----RUN in mapred mode-----
+$ pig -x mapred
+grunt> lines = LOAD '/user/edureka/WordCount.txt' USING TextLoader AS (line:chararray);
+grunt> words = FOREACH lines GENERATE FLATTEN(TOKENIZE(line)) as word;
+grunt> grouped = GROUP words BY word;
+grunt> wordcount = FOREACH grouped GENERATE group, COUNT(words);
+grunt> STORE wordcount INTO '/user/edureka/WCOP1/';
+
+grunt> fs -ls /user/edureka/WCOP1/
+grunt> fs -cat /user/edureka/WCOP1/part-r-00000
+grunt> quit
+-------------------
+
+$ pig -x local
+
+--JOIN
+grunt> V = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/Visits.csv' USING PigStorage(',') AS (user:chararray,url:chararray,timestamp:chararray);
+grunt> P = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/Pages.csv' USING PigStorage(',') AS (url:chararray,prnk:float);                         
+grunt> J = JOIN V by url,P by url;                                                                       
+grunt> F = Filter J by P::prnk > 0.5; 
+grunt> G = FOREACH F generate V::user, P::prnk;
+grunt> D = DISTINCT G;
+grunt> STORE D INTO '/home/edureka/SHAHBAZWS/BATCH170917/PIG/TEMPSTORAGE'; 
+
+--OR store in HDFS
+
+grunt> STORE D INTO 'hdfs://localhost:8020/user/edureka/TEMPSTORAGE';
+
+---Map data
+
+grunt> M = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/MapData.txt' USING PigStorage(',') AS (a:map[chararray],b:map[int]);
+grunt> F = FOREACH M generate a#'NAME', b#'AGE';                                     
+grunt> DUMP F;
+
+-----GROUP and COGROUP (DEFAULT seperator is TAB)
+
+grunt> S = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/student' AS (name:chararray,age:int,gpa:float);
+grunt> G = GROUP S by name;
+grunt> DUMP G;
+grunt> SR = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/studentRoll' AS (name:chararray,rollno:int);
+grunt> CO = COGROUP S by name, SR by name;
+grunt> DUMP CO;
+grunt> J = JOIN S by name, SR by name;
+grunt> DUMP J;
+
+--JOIN
+grunt> D = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/data1' AS (a:int,b:int);
+grunt> S = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/data2' AS (c:int,d:int);
+grunt> J = JOIN D by a, S by c;
+grunt> DUMP J;
+
+--UNION
+grunt> A = load '/home/edureka/SHAHBAZWS/BATCH170917/PIG/data1' as (a1:int, a2:int);
+grunt> B = load '/home/edureka/SHAHBAZWS/BATCH170917/PIG/data2' as (b1:int, b2:int);
+grunt> X = UNION A, B;
+grunt> DUMP X;
+
+--REPLICATED JOIN
+grunt> C = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/custs' USING PigStorage(',');
+grunt> T = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/txns' USING PigStorage(','); 
+grunt> J = JOIN T by $2 ,C by $0 USING 'replicated';
+grunt> L = LIMIT J 100;
+grunt> DUMP L;
+
+--skewed
+grunt> C = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/custs' USING PigStorage(',');
+grunt> T = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/txns' USING PigStorage(','); 
+grunt> J = JOIN C by $0, T by $2 USING 'skewed';
+grunt> L = LIMIT J 100;
+grunt> DUMP L;
+
+--MERGE JOIN IN MAPRED
+grunt> C = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/custs' USING PigStorage(',');
+grunt> T = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/txns' USING PigStorage(','); 
+grunt> CS = ORDER C by $0 ASC;
+grunt> TS = ORDER T by $2 ASC;
+grunt> J = JOIN CS by $0, TS by $2 USING 'merge';
+grunt> L = LIMIT J 100;
+grunt> DUMP L;
+
+--- STREAM OPERATOR
+
+grunt> T = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/txns' USING PigStorage(',');
+grunt> top10 = STREAM T THROUGH `head -n 10`;
+grunt> DUMP top10;
+
+--run pig script with parameters
+
+[edureka@localhost PIG]$ pwd
+/home/edureka/SHAHBAZWS/BATCH170917/PIG
+[edureka@localhost PIG]$
+
+$ pig -x local -param DATA=healthcare_Sample_dataset1.csv myparams.pig
+
+--executing using params file
+
+$ pig -x local -param_file params myparams.pig
+
+----PIGGY BANK
+
+grunt> REGISTER /usr/lib/pig-0.12.0/contrib/piggybank/java/piggybank.jar;
+grunt> L = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/Lower.txt' USING PigStorage(',');
+grunt> B = FOREACH L GENERATE org.apache.pig.piggybank.evaluation.string.UPPER($0),$1;
+grunt> DUMP B;
+
+--illustrate
+
+grunt> V = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/Visits.csv' USING PigStorage(',') AS (user:chararray,url:chararray,timestamp:chararray);
+grunt> P = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/Pages.csv' USING PigStorage(',') AS (url:chararray,prnk:float);                         
+grunt> J = JOIN V by url,P by url;                                                                       
+grunt> F = Filter J by P::prnk > 0.5; 
+grunt> DESCRIBE F;
+grunt> EXPLAIN F;
+grunt> ILLUSTRATE F;
+
+----loading and parsing data-----
+$ rm -r /home/edureka/SHAHBAZWS/BATCH170917/PIG/weatherOP1
+OR
+grunt> fs -rm -r /home/edureka/SHAHBAZWS/BATCH170917/PIG/weatherOP1
+
+grunt> A = load '/home/edureka/SHAHBAZWS/BATCH170917/PIG/weatherPIG.txt' using TextLoader as (data:chararray);
+grunt> AF = foreach A generate TRIM(SUBSTRING(data, 6, 14)), TRIM(SUBSTRING(data, 46, 53)), TRIM(SUBSTRING(data, 38, 45));
+grunt> store AF into '/home/edureka/SHAHBAZWS/BATCH170917/PIG/weatherOP1' using PigStorage(',');
+grunt> S = load '/home/edureka/SHAHBAZWS/BATCH170917/PIG/weatherOP1/part-m-00000' using PigStorage(',') as (date:chararray, min:double, max:double);
+
+--Hot Days
+grunt> X1 = filter S by max > 25;
+grunt> dump X1;
+
+--Cold Days
+grunt> X2 = filter S by min < 0;
+grunt> dump X2;
+
+--Hottest Day
+/* puts S's data in H1's Tuple */
+
+grunt> H1 = group S all; 	
+grunt> I = foreach H1 generate MAX(S.max) as maximum;
+grunt> X = filter S by max == I.maximum;
+
+--Coldest Day
+grunt> H2 = group S all;
+grunt> J = foreach H2 generate MIN(S.min) as minimum;
+grunt> X = filter S by min == J.minimum;

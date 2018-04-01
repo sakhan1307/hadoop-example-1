@@ -1,0 +1,4 @@
+L = LOAD '$DATA';
+LI = LIMIT L 10;
+DUMP LI;
+
