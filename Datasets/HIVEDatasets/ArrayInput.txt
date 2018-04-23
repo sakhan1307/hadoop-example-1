@@ -1,0 +1,2 @@
+1,abc,40000,a$b$c,hyd
+2,def,3000,d$f,bang

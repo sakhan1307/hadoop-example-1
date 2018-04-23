@@ -1,0 +1,403 @@
+--Hive Keywords
+https://cwiki.apache.org/confluence/display/Hive/LanguageManual+DDL#LanguageManualDDL-Keywords,Non-reservedKeywordsandReservedKeywords
+
+--start hive shell
+[edureka@localhost ~]$ cd SHAHBAZWS/BATCH170917/HIVE/
+[edureka@localhost HIVE]$ ls
+[edureka@localhost HIVE]$ hive
+18/04/01 16:09:06 INFO Configuration.deprecation: mapred.reduce.tasks is deprecated. Instead, use mapreduce.job.reduces
+18/04/01 16:09:06 INFO Configuration.deprecation: mapred.min.split.size is deprecated. Instead, use mapreduce.input.fileinputformat.split.minsize
+18/04/01 16:09:06 INFO Configuration.deprecation: mapred.reduce.tasks.speculative.execution is deprecated. Instead, use mapreduce.reduce.speculative
+18/04/01 16:09:06 INFO Configuration.deprecation: mapred.min.split.size.per.node is deprecated. Instead, use mapreduce.input.fileinputformat.split.minsize.per.node
+18/04/01 16:09:06 INFO Configuration.deprecation: mapred.input.dir.recursive is deprecated. Instead, use mapreduce.input.fileinputformat.input.dir.recursive
+18/04/01 16:09:06 INFO Configuration.deprecation: mapred.min.split.size.per.rack is deprecated. Instead, use mapreduce.input.fileinputformat.split.minsize.per.rack
+18/04/01 16:09:06 INFO Configuration.deprecation: mapred.max.split.size is deprecated. Instead, use mapreduce.input.fileinputformat.split.maxsize
+18/04/01 16:09:06 INFO Configuration.deprecation: mapred.committer.job.setup.cleanup.needed is deprecated. Instead, use mapreduce.job.committer.setup.cleanup.needed
+
+Logging initialized using configuration in jar:file:/usr/lib/hive-0.13.1-bin/lib/hive-common-0.13.1.jar!/hive-log4j.properties
+hive>
+hive> show tables;
+OK
+Time taken: 0.563 seconds
+hive> set hive.cli.print.header=true;
+hive> show tables;
+OK
+tab_name
+Time taken: 0.048 seconds
+hive> show databases;
+OK
+database_name
+default
+Time taken: 0.036 seconds, Fetched: 1 row(s)
+
+hive> create table student(Id int, name varchar(50));
+OK
+Time taken: 0.52 seconds
+hive> show tables;
+OK
+tab_name
+student
+Time taken: 0.038 seconds, Fetched: 1 row(s)
+hive> drop table student;
+OK
+Time taken: 1.502 seconds
+hive> show tables;                  
+OK
+tab_name
+Time taken: 0.111 seconds
+hive> 
+
+A. Create Database
+------------------
+hive> create database retail;
+
+hive> show databases;
+OK
+database_name
+default
+retail
+Time taken: 0.019 seconds, Fetched: 2 row(s)
+hive> 
+
+B. Select Database
+------------------
+hive> use retail;
+
+--hdfs location for db hdfs://localhost:8020/user/hive/warehouse/retail.db
+
+hive> create table txnrecords(txnno INT, txndate STRING, custno INT, amount DOUBLE, 
+    > category STRING, product STRING, city STRING, state STRING, spendby STRING)
+    > row format delimited
+    > fields terminated by ','
+    > stored as textfile;
+
+---Load data from local file
+hive> LOAD DATA LOCAL INPATH '/home/edureka/SHAHBAZWS/BATCH170917/PIG/txns' OVERWRITE INTO TABLE txnrecords;
+
+hive> select * from retail.txnrecords limit 10;
+OK
+hive> select * from txnrecords where category='Puzzles';
+
+hive> describe txnrecords;
+hive> select count(*) from txnrecords;
+hive> select category, sum(amount) from txnrecords group by category;
+hive> select custno, sum(amount) from txnrecords group by custno limit 10;
+
+---create hdfs hive directory--
+hive> dfs -mkdir -p /user/edureka/HIVE/TXNS/;
+
+--create external table
+hive> create external table etxnrecords(txnno INT, txndate STRING, custno INT, amount DOUBLE, category STRING, product STRING, city STRING, state STRING, spendby STRING)
+    > row format delimited
+    > fields terminated by ','
+    > stored as textfile location '/user/edureka/HIVE/TXNS/';
+	
+hive> Load Data local inpath '/home/edureka/SHAHBAZWS/BATCH170917/PIG/txns' OVERWRITE INTO TABLE etxnrecords;
+
+hive> select count(*) from etxnrecords;
+
+--Create partitioned table
+hive> create table txnrecsByCat(txnno INT, txndate STRING, custno INT, amount DOUBLE,
+    > product STRING, city STRING, state STRING, spendby STRING)
+    > partitioned by (category STRING)
+    > clustered by (state) INTO 10 buckets
+    > row format delimited
+    > fields terminated by ','
+    > stored as orc;
+
+--Configure Hive to allow partitions
+However, a query across all partitions could trigger an enormous MapReduce job if the table data and number of partitions are large. A highly suggested safety measure is putting Hive into strict mode, which prohibits queries of partitioned tables without a WHERE clause that filters on partitions. You can set the mode to nonstrict, as in the following session:
+
+hive> set hive.exec.dynamic.partition.mode=nonstrict;
+hive> set hive.exec.dynamic.partition=true;
+hive> set hive.enforce.bucketing=true;
+
+--Load data into partition table
+
+hive> from txnrecords txn INSERT OVERWRITE TABLE txnrecsByCat PARTITION(category)
+    > select txn.txnno, txn.txndate,txn.custno, txn.amount,txn.product,txn.city,txn.state,
+    > txn.spendby, txn.category DISTRIBUTE BY category;
+
+---Bucketing
+
+hive> SELECT txnno,product,state FROM txnrecsbycat TABLESAMPLE(BUCKET 2 OUT OF 10);
+
+hive> select txnno, product FROM txnrecsbycat TABLESAMPLE(BUCKET 2 OUT OF 10) order by txnno;
+
+----
+
+hive> create external table customer(custno string, firstname string, lastname string, age int,profession string)
+    > row format delimited
+    > fields terminated by ',';
+
+hive> load data local inpath '/home/edureka/SHAHBAZWS/BATCH170917/PIG/custs' into table customer;
+
+hive> select * from customer limit 10
+
+hive> create table out1 (custno int,firstname string,age int,profession string,amount double,product string)
+    > row format delimited                                                                                  
+    > fields terminated by ',';
+
+hive> insert overwrite table out1                                                                           
+    > select a.custno,a.firstname,a.age,a.profession,b.amount,b.product                                     
+    > from customer a JOIN txnrecords b ON a.custno = b.custno; 
+
+hive> select * from out1 limit 10;
+
+hive> create table out2 (custno int,firstname string,age int,profession string,amount double,product string, level string)
+    > row format delimited                                                                                  
+    > fields terminated by ','; 
+
+hive> insert overwrite table out2
+    > select * , case
+    >  when age<30 then 'low'
+    >  when age>=30 and age < 50 then 'middle'
+    >  when age>=50 then 'old' 
+    >  else 'others'
+    > end
+    > from out1;
+
+hive> select * from out2 limit 10; 
+
+hive> describe out2;
+
+hive> create table out3 (level string, amount double)                                                                                   
+    > row format delimited
+    > fields terminated by ',';
+
+hive> insert overwrite table out3  
+    > select level,sum(amount) from out2 group by level;
+
+hive> select * from out3;
+
+----simple join
+hive> create table employee(name string, salary float,city string)
+    > row format delimited
+    > fields terminated by ',';
+
+hive> LOAD DATA LOCAL INPATH '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/emp.txt' INTO TABLE employee;
+
+hive> select * from employee where name='tarun';
+
+hive> create table mailid (name string, email string)
+    > row format delimited
+    > fields terminated by ',';
+
+hive> LOAD DATA LOCAL INPATH '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/email.txt' INTO TABLE mailid;
+
+hive> select a.name,a.city,a.salary,b.email from 
+    > employee a join mailid b on a.name = b.name;
+
+hive> select a.name,a.city,a.salary,b.email from 
+    > employee a left outer join mailid b on a.name = b.name;
+
+hive> select a.name,a.city,a.salary,b.email from 
+    > employee a right outer join mailid b on a.name = b.name;
+
+hive> select a.name,a.city,a.salary,b.email from 
+    > employee a full outer join mailid b on a.name = b.name;
+	
+--Custom Mapper Code to manipulate unix timestamp
+
+hive> CREATE EXTERNAL TABLE u_data ( userid INT, movieid INT, rating INT, unixtime STRING) 
+    > ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' STORED AS TEXTFILE
+    > LOCATION '/user/edureka/HIVE/MOVIES'; 
+
+hive> LOAD DATA LOCAL INPATH '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/u_data.txt' OVERWRITE INTO TABLE u_data;
+
+hive> SELECT COUNT(*) FROM u_data;
+
+****Create weekday_mapper.py:
+
+hive> CREATE TABLE u_data_new ( 
+    > userid INT, 
+    > movieid INT, 
+    > rating INT, 
+    > weekday INT) 
+    > ROW FORMAT DELIMITED 
+    > FIELDS TERMINATED BY '\t'
+    > STORED AS ORC; 
+	
+hive> add FILE /home/edureka/SHAHBAZWS/BATCH170917/HIVE/weekday_mapper.py; 
+
+****Note that columns will be transformed to string and delimited 
+****by TAB before feeding to the user script, and the standard output 
+****of the user script will be treated as TAB-separated string columns.
+
+****The following command uses the TRANSFORM clause to embed the mapper scripts.
+
+hive> INSERT OVERWRITE TABLE u_data_new 
+    > SELECT 
+    > TRANSFORM (userid, movieid, rating, unixtime) 
+    > USING 'python weekday_mapper.py' 
+    > AS (userid, movieid, rating, weekday) 
+    > FROM u_data;
+	
+hive> SELECT weekday, COUNT(*) 
+    > FROM u_data_new 
+    > GROUP BY weekday;
+
+hive> SELECT * from u_data;
+
+hive> SELECT * from u_data_new;
+
+--UDF (USER DEFINE FUNCTION)
+
+**direct compile at unix or build from maven in eclipse 
+$ javac -classpath hadoop-core-1.2.1.jar:hive-exec-0.13.1.jar UnixtimeToDate.java
+
+****Pack this class file into a jar: 
+$jar -cvf convert.jar UnixtimeToDate.class
+
+****Verify jar using command : 
+$jar -tvf convert.jar
+
+****add this jar in hive prompt
+hive> ADD JAR  convert.jar;
+
+****Then you create your custom function as follows and class name should be with package(com.test.UnixtimeToDate if package is com.test):
+hive> CREATE  FUNCTION userdate as 'UnixtimeToDate';
+
+hive> create table testing(id string,unixtime string)
+    > row format delimited
+    > fields terminated by ','
+	
+hive> LOAD DATA LOCAL INPATH '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/counter.txt' OVERWRITE INTO TABLE testing;
+
+hive> select * from testing;
+
+hive> select id,userdate(unixtime) from testing;
+
+--Lower UDF
+$ javac -classpath hadoop-core-1.2.1.jar:hive-exec-0.13.1.jar Lower.java
+
+****Pack this class file into a jar: 
+$jar -cvf lower.jar Lower.class
+
+****Verify jar using command : 
+$jar -tvf lower.jar
+
+****add this jar in hive prompt
+hive> ADD JAR  lower.jar;
+
+****Then you create your custom function as follows:
+hive> CREATE  FUNCTION to_lower as 'Lower';
+
+hive> create table lower(id int,name string)
+    > row format delimited
+    > fields terminated by ',';
+
+hive> LOAD DATA LOCAL INPATH '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/Lower.txt' OVERWRITE INTO TABLE lower;
+
+hive> select * from lower;
+
+hive> select id,to_lower(name) from lower;
+
+--Hive JBDC java HiveJdbcClient.java
+
+--run hive to connect via thrift server
+
+[edureka@localhost ~]$ cd /usr/lib/hive-0.13.1-bin/bin
+[edureka@localhost bin]$ ls
+beeline  ext  hive  hive-config.sh  hiveserver2  metatool  schematool
+[edureka@localhost bin]$ hive --service hiveserver
+
+
+--see log inside file /tmp/edureka/hive.log
+
+--run from eclipse
+
+OR
+
+[edureka@localhost HIVE]$ javac -cp .:/usr/lib/hive-0.13.1-bin/lib/* HiveJdbcClient.java
+[edureka@localhost HIVE]$ java -cp .:/usr/lib/hive-0.13.1-bin/lib/*:/usr/lib/hadoop-2.2.0/share/hadoop/common/lib/*:/usr/lib/hadoop-2.2.0/share/hadoop/common/*:/usr/lib/hadoop-2.2.0/share/hadoop/hdfs/*:/usr/lib/hadoop-2.2.0/share/hadoop/mapreduce/* HiveJdbcClient
+Running: show tables 'testHiveDriverTable'
+testhivedrivertable
+Running: describe testHiveDriverTable
+key                 	int                 
+value               	string              
+Running: load data local inpath '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/a.txt' OVERWRITE INTO table testHiveDriverTable
+Running: select * from testHiveDriverTable
+1	101
+2	102
+3	103
+4	105  
+5	106
+Running: select count(1) from testHiveDriverTable
+5
+[edureka@localhost HIVE]$
+
+--HIVE2 server start (don't run any other session of hive)
+[edureka@localhost HIVE]$ cd /usr/lib/hive-0.13.1-bin/bin
+[edureka@localhost bin]$ hive --service hiveserver2
+
+--test from beeline
+[edureka@localhost HIVE]$ beeline -u "jdbc:hive2://localhost:10000/default" -n "hive" -p "" -d "org.apache.hive.jdbc.HiveDriver"
+Connecting to jdbc:hive2://localhost:10000/default
+Connected to: Apache Hive (version 0.13.1)
+Driver: Hive JDBC (version 0.13.1)
+Transaction isolation: TRANSACTION_REPEATABLE_READ
+Beeline version 0.13.1 by Apache Hive
+0: jdbc:hive2://localhost:10000/default> show tables;
++----------------------+
+|       tab_name       |
++----------------------+
+| testhivedrivertable  |
++----------------------+
+1 row selected (1.176 seconds)
+0: jdbc:hive2://localhost:10000/default> select * from testhivedrivertable;
+
+--connect from beeline cli
+[edureka@localhost HIVE]$ beeline
+Beeline version 0.13.1 by Apache Hive
+beeline> !connect jdbc:hive2://localhost:10000
+scan complete in 4ms
+Connecting to jdbc:hive2://localhost:10000
+Enter username for jdbc:hive2://localhost:10000: hive
+Enter password for jdbc:hive2://localhost:10000: 
+Connected to: Apache Hive (version 0.13.1)
+Driver: Hive JDBC (version 0.13.1)
+Transaction isolation: TRANSACTION_REPEATABLE_READ
+0: jdbc:hive2://localhost:10000> show tables;
+
+--test hive2 via java
+[edureka@localhost HIVE]$ javac -cp .:/usr/lib/hive-0.13.1-bin/lib/*:/usr/lib/hadoop-2.2.0/share/hadoop/common/lib/*:/usr/lib/hadoop-2.2.0/share/hadoop/common/*:/usr/lib/hadoop-2.2.0/share/hadoop/hdfs/*:/usr/lib/hadoop-2.2.0/share/hadoop/mapreduce/* HiveJdbcClient2.java
+[edureka@localhost HIVE]$ java -cp .:/usr/lib/hive-0.13.1-bin/lib/*:/usr/lib/hadoop-2.2.0/share/hadoop/common/lib/*:/usr/lib/hadoop-2.2.0/share/hadoop/common/*:/usr/lib/hadoop-2.2.0/share/hadoop/hdfs/*:/usr/lib/hadoop-2.2.0/share/hadoop/mapreduce/* HiveJdbcClient2
+
+---------------------
+---Hive Index
+
+hive> CREATE INDEX txn_index
+    > ON table txnrecords(state)
+    > AS 'org.apache.hadoop.hive.ql.index.compact.CompactIndexHandler'
+    > WITH DEFERRED REBUILD
+    > in table txn_record_table;
+
+hive> ALTER INDEX txn_index on txnrecords REBUILD;
+
+hive> select * from txnrecords where state='Oregon' limit 10;
+
+hive> desc txn_record_table;                  
+OK
+state               	string              	                    
+_bucketname         	string              	                    
+_offsets            	array<bigint>  
+
+----create view in hive
+
+hive> create view txnview
+    > as select * from txnrecords limit 10;
+	
+hive> select * from txnview;
+
+--Complex data types
+
+hive> create table complextable(id int, name string, salary float, address array<string>, location string)
+    > ROW FORMAT DELIMITED
+    > FIELDS TERMINATED BY ','
+    > COLLECTION ITEMS TERMINATED BY '$' 
+    > STORED AS TEXTFILE;
+
+hive> load data local inpath '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/ArrayInput.txt' INTO TABLE complextable;
+
+hive> select * from complextable;

@@ -228,3 +228,38 @@ grunt> X = filter S by max == I.maximum;
 grunt> H2 = group S all;
 grunt> J = foreach H2 generate MIN(S.min) as minimum;
 grunt> X = filter S by min == J.minimum;
+
+-----UDF(user define function in java)-----
+grunt> register hadoop-example-1-0.0.1-SNAPSHOT.jar;
+
+grunt> A = load '/home/edureka/SHAHBAZWS/BATCH170917/PIG/weatherPIG.txt' using TextLoader as (data:chararray);
+
+grunt> AF = foreach A generate TRIM(SUBSTRING(data, 6, 14)), com.laboros.pig.udf.IfCorrupted(TRIM(SUBSTRING(data, 46, 53))), com.laboros.pig.udf.IfCorrupted(TRIM(SUBSTRING(data, 38, 45)));
+
+--OR define pig function from java class
+grunt> DEFINE if_corrupt com.laboros.pig.udf.IfCorrupted();
+grunt> AF = foreach A generate TRIM(SUBSTRING(data, 6, 14)), if_corrupt(TRIM(SUBSTRING(data, 46, 53))), if_corrupt(TRIM(SUBSTRING(data, 38, 45)));
+
+
+grunt> store AF into '/home/edureka/SHAHBAZWS/BATCH170917/PIG/weatherOP2' using PigStorage(',');
+grunt> S = load '/home/edureka/SHAHBAZWS/BATCH170917/PIG/weatherOP2/part-m-00000' using PigStorage(',') as (date:chararray, min:double, max:double);
+grunt> L = LIMIT S 10;
+grunt> dump L;
+
+-----
+
+grunt> REGISTER hadoop-example-1-0.0.1-SNAPSHOT.jar;
+
+grunt> A = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/healthcare_Sample_dataset2.csv' using PigStorage(',') AS (PatientID: int, Name: chararray, DOB: chararray, PhoneNumber: chararray, EmailAddress: chararray, SSN: chararray, Gender: chararray, Disease: chararray, weight: float);
+
+grunt> B = LOAD '/home/edureka/SHAHBAZWS/BATCH170917/PIG/healthcare_Sample_dataset1.csv' using PigStorage(',') AS (PatientID: int, Name: chararray, DOB: chararray, PhoneNumber: chararray, EmailAddress: chararray, SSN: chararray, Gender: chararray, Disease: chararray, weight: float);
+
+grunt> U = UNION A, B;
+
+grunt> C = LIMIT U 100;
+
+grunt> DEFINE to_deidentify com.laboros.pig.udf.DeIdentifyUDF();
+
+grunt> D = FOREACH C GENERATE PatientID, to_deidentify(Name,'12345678abcdefgh'), to_deidentify(DOB,'12345678abcdefgh'), to_deidentify(PhoneNumber,'12345678abcdefgh'), com.test.deidentify.DeIdentifyUDF(EmailAddress,'12345678abcdefgh'),com.test.deidentify.DeIdentifyUDF(SSN,'12345678abcdefgh'), com.test.deidentify.DeIdentifyUDF(Disease,'12345678abcdefgh'),weight;
+
+grunt> STORE D into '/home/edureka/SHAHBAZWS/BATCH170917/PIG/deidentifiedDir';
