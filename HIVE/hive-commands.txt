@@ -401,3 +401,42 @@ hive> create table complextable(id int, name string, salary float, address array
 hive> load data local inpath '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/ArrayInput.txt' INTO TABLE complextable;
 
 hive> select * from complextable;
+
+---PARTITIONING
+
+hive> create external table student(id int,name string, year int)
+    > ROW FORMAT DELIMITED 
+    > FIELDS TERMINATED BY ',';
+	
+hive> LOAD DATA LOCAL INPATH '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/student' INTO TABLE STUDENT;
+
+hive> create table studentpart(id int,name string)
+    > PARTITIONED BY (year int)
+    > ROW FORMAT DELIMITED
+    > FIELDS TERMINATED BY ',';
+	
+hive> LOAD DATA LOCAL INPATH '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/student_2015' INTO TABLE STUDENTPART PARTITION (year=2015);
+
+hive> LOAD DATA LOCAL INPATH '/home/edureka/SHAHBAZWS/BATCH170917/HIVE/student_2016' INTO TABLE STUDENTPART PARTITION (year=2016);
+
+hive> select * from studentpart where year=2015;
+
+hive> show partitions studentpart;
+
+---MULTI INSERT 
+
+hive> create table results(txnno INT, txndate STRING, custno INT, amount DOUBLE, 
+    > category STRING, product STRING, city STRING, state STRING, spendby STRING)
+    > row format delimited
+    > fields terminated by ','
+    > stored as textfile;
+
+hive> from txnrecords txn
+    > insert overwrite table results
+    > select txn.*
+    > insert overwrite local directory '/tmp/results'
+    > select txn.*
+    > insert overwrite directory '/user/edureka/HIVE/results'
+    > select txn.*;
+
+hive> select * from results limit 10;
